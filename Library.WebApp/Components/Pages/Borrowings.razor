@@ -1,0 +1,124 @@
+﻿@page "/borrowings"
+@using Library.WebApp.DTOs
+@using Library.WebApp.Helpers
+@rendermode InteractiveServer
+
+
+<div class="container">
+    <h1>Books</h1>
+    <div class="row">
+        <div class="col-md-3">
+            <label>Book ID:</label>
+            <input type="text" @bind="searchBookId"/>
+        </div>
+        <div class="col-md-3">
+            <label>User ID:</label>
+            <input type="text" @bind="searchUserId"/>
+        </div>
+        <div class="col-md-3">
+            <button class="btn btn-primary" @onclick="SearchBorrowings">Search</button>
+        </div>
+    </div>
+    <div class="row">
+        <div class="col-md-12">
+            @if (borrowings is not null)
+            {
+                <table class="table table-striped">
+                    <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>User ID</th>
+                        <th>Username</th>
+                        <th>Book ID</th>
+                        <th>Book Title</th>
+                        <th>Book ISBN</th>
+                        <th>Borrowing Time</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    @foreach (var borrowing in borrowings.Results)
+                    {
+                        <tr>
+                            <td>@borrowing.Id</td>
+                            <td>@borrowing.User.Id</td>
+                            <td>@borrowing.User.Username</td>
+                            <td>@borrowing.Book.Id</td>
+                            <td>@borrowing.Book.Title</td>
+                            <td>@borrowing.Book.Isbn</td>
+                            <td>@borrowing.CreationTime</td>
+                        </tr>
+                    }
+                    </tbody>
+                </table>
+                
+                <div class="my-3 row">
+                    <div class="col-md-2">
+                        <button class="btn btn-primary" @onclick="MoveToThePreviousPage">Previous</button>
+                    </div>
+                    <div class="col-md-2">
+                        <p>Books from @(skipCount + 1) to @borrowings?.TotalCount</p>
+                    </div>
+                    <div class="col-md-2">
+                        <button class="btn btn-primary" @onclick="MoveToTheNextPage">Next</button>
+                    </div>
+                </div>
+
+            }
+        </div>
+        
+        @if (errorMessage is not null)
+        {
+            <h2 class="alert-danger">@errorMessage</h2>
+        }
+
+    </div>
+</div>
+
+@code {
+    private int skipCount;
+    private const int maxPageSize = 5;
+
+    private string searchUserId;
+    private string searchBookId;
+
+    private string errorMessage;
+    private PagedResult<Borrowing> borrowings;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await SearchBorrowings();
+    }
+
+    private async Task MoveToTheNextPage()
+    {
+        if (borrowings is null) return;
+
+        skipCount += maxPageSize;
+        if (skipCount > borrowings.TotalCount) skipCount = borrowings.TotalCount - maxPageSize;
+        if (skipCount < 0) skipCount = 0;
+
+        await SearchBorrowings();
+    }
+
+    private async Task MoveToThePreviousPage()
+    {
+        if (borrowings is null) return;
+
+        skipCount -= maxPageSize;
+        if (skipCount < 0) skipCount = 0;
+
+        await SearchBorrowings();
+    }
+
+    private async Task SearchBorrowings()
+    {
+        int? userId = int.TryParse(searchUserId, out var userIdresult) ? userIdresult : null;
+        int? bookId = int.TryParse(searchBookId, out var bookIdresult) ? bookIdresult : null;
+
+        var result = await LibraryClient.GetBorrowings(userId, bookId, skipCount, maxPageSize);
+
+        borrowings = result.Value;
+        errorMessage = result.Message;
+        if (skipCount > borrowings?.TotalCount) skipCount = 0;
+    }
+}

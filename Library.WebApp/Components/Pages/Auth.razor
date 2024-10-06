@@ -1,0 +1,68 @@
+﻿@page "/auth"
+@using Library.WebApp.Helpers
+@inject IJSRuntime js
+@rendermode InteractiveServer
+
+<h3>Login</h3>
+
+<script>
+    function refreshPage() {
+        location.reload();
+    }
+</script>
+
+@if (LibraryClient.AuthModel is not null)
+{
+    <p>Welcome, @LibraryClient.AuthModel.Username! Your User ID is: @LibraryClient.AuthModel.UserId</p>
+    <button type="submit" class="btn btn-danger" @onclick="LogOut">LogOut</button>
+}
+else
+{
+    <EditForm Model="loginModel" OnValidSubmit="HandleLogin" FormName="Auth">
+        <DataAnnotationsValidator/>
+        <ValidationSummary/>
+
+        <div class="mb-3">
+            <label for="username" class="form-label">Username</label>
+            <InputText id="username" class="form-control" @bind-Value="loginModel.Username"/>
+        </div>
+
+        <div class="mb-3">
+            <label for="password" class="form-label">Password</label>
+            <InputText id="password" type="password" class="form-control" @bind-Value="loginModel.Password"/>
+        </div>
+
+        <button type="submit" class="btn btn-primary">Login</button>
+    </EditForm>
+
+    @if (errorMessage != null)
+    {
+        <h2 class="alert-danger">@errorMessage</h2>
+    }
+}
+
+@code {
+    private string errorMessage;
+    private LoginModel loginModel = new LoginModel();
+
+    private async Task HandleLogin()
+    {
+        var result = await LibraryClient.LogIn(loginModel.Username, loginModel.Password);
+        if (!result.Success) errorMessage = result.Message;
+        await js.InvokeVoidAsync("refreshPage");
+    }
+
+    public async Task LogOut()
+    {
+        loginModel = new();
+        LibraryClient.LogOut();
+        await js.InvokeVoidAsync("refreshPage");
+    }
+
+    public class LoginModel
+    {
+        public string Username { get; set; }
+        public string Password { get; set; }
+    }
+
+}

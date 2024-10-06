@@ -1,0 +1,108 @@
+@page "/users"
+@using Library.WebApp.DTOs
+@using Library.WebApp.Helpers
+@rendermode InteractiveServer
+
+<div class="container">
+    <h1>Users</h1>
+    <div class="row">
+        <div class="col-md-5">
+            <label>Username:</label>
+            <input type="text" @bind="searchUsername"/>
+        </div>
+        <div class="col-md-5">
+            <button class="btn btn-primary" @onclick="SearchUsers">Search</button>
+        </div>
+    </div>
+    <div class="row">
+        <div class="col-md-12">
+            @if (users is not null)
+            {
+                <table class="table table-striped">
+                    <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Type</th>
+                        <th>Username</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    @foreach (var user in users.Results)
+                    {
+                        <tr>
+                            <td>@user.Id</td>
+                            <td>@user.Type</td>
+                            <td>@user.Username</td>
+                        </tr>
+                    }
+                    </tbody>
+                </table>
+                
+                <div class="my-3 row">
+                    <div class="col-md-2">
+                        <button class="btn btn-primary" @onclick="MoveToThePreviousPage">Previous</button>
+                    </div>
+                    <div class="col-md-2">
+                        <p>Books from @(skipCount + 1) to @users?.TotalCount</p>
+                    </div>
+                    <div class="col-md-2">
+                        <button class="btn btn-primary" @onclick="MoveToTheNextPage">Next</button>
+                    </div>
+                </div>
+
+            }
+        </div>
+        
+        @if (errorMessage is not null)
+        {
+            <h2 class="alert-danger">@errorMessage</h2>
+        }
+
+    </div>
+</div>
+
+@code {
+    
+    private int skipCount;
+    private const int maxPageSize = 5;
+
+    private string searchUsername;
+
+    private string errorMessage;
+    private PagedResult<User> users;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await SearchUsers();
+    }
+
+    private async Task MoveToTheNextPage()
+    {
+        if (users is null) return;
+
+        skipCount += maxPageSize;
+        if (skipCount > users.TotalCount) skipCount = users.TotalCount - maxPageSize;
+        if (skipCount < 0) skipCount = 0;
+
+        await SearchUsers();
+    }
+
+    private async Task MoveToThePreviousPage()
+    {
+        if (users is null) return;
+
+        skipCount -= maxPageSize;
+        if (skipCount < 0) skipCount = 0;
+
+        await SearchUsers();
+    }
+
+    private async Task SearchUsers()
+    {
+        var result = await LibraryClient.GetUsers(searchUsername, skipCount, maxPageSize);
+
+        users = result.Value;
+        errorMessage = result.Message;
+        if (skipCount > users?.TotalCount) skipCount = 0;
+    }
+}
